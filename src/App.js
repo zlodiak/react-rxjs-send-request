@@ -1,5 +1,5 @@
 import React from 'react';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, combineLatest } from 'rxjs/index';
 
 const withObservableStream = (observable, triggers) => Component => {
   return class extends React.Component {
@@ -21,7 +21,17 @@ const withObservableStream = (observable, triggers) => Component => {
   };
 };
 
-const App = ({ query = '', onChangeQuery }) => (
+const SUBJECT = {
+  POPULARITY: 'search',
+  DATE: 'search_by_date',
+};
+
+const App = ({
+  query = '',
+  subject,
+  onChangeQuery,
+  onSelectSubject,
+}) => (
   <div>
     <h1>React with RxJS</h1>
 
@@ -31,15 +41,32 @@ const App = ({ query = '', onChangeQuery }) => (
       onChange={event => onChangeQuery(event.target.value)}
     />
 
-    <p>{`http://hn.algolia.com/api/v1/search?query=${query}`}</p>
+    <div>
+      {Object.values(SUBJECT).map(value => (
+        <button
+          key={value}
+          onClick={() => onSelectSubject(value)}
+          type="button"
+        >
+          {value}
+        </button>
+      ))}
+    </div>
+
+    <p>{`http://hn.algolia.com/api/v1/${subject}?query=${query}`}</p>
   </div>
 );
 
-const query$ = new BehaviorSubject({ query: 'react' });
+const query$ = new BehaviorSubject('react');
+const subject$ = new BehaviorSubject(SUBJECT.POPULARITY);
 
 export default withObservableStream(
-  query$,
+  combineLatest(subject$, query$, (subject, query) => ({
+    subject,
+    query,
+  })),
   {
-    onChangeQuery: value => query$.next({ query: value }),
-  }
+    onChangeQuery: value => query$.next(value),
+    onSelectSubject: subject => subject$.next(subject),
+  },
 )(App);
